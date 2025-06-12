@@ -1,5 +1,4 @@
 // Import library yang diperlukan
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import asyncHandler from "express-async-handler";
 
@@ -7,60 +6,137 @@ import asyncHandler from "express-async-handler";
 import Models from "../models/index.js";
 
 // Fungsi untuk generate JWT token
-const generateToken = (adminId) => {
-  return jwt.sign({ adminId }, process.env.JWT_SECRET, {
-    expiresIn: "30d",
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRE || "30d",
   });
 };
 
-// @desc    Register new admin
-// @route   POST /api/v1/admin/register
-// @access  Private
+// // @desc    Register new admin
+// // @route   POST /api/v1/admin/register
+// // @access  Private
+// export const registerAdmin = asyncHandler(async (req, res) => {
+//   const { name, email, password } = req.body;
+
+//   // Validasi input
+//   if (!name || !email || !password) {
+//     res.status(400);
+//     throw new Error("Please provide name, email, and password");
+//   }
+
+//   // Cek apakah admin sudah ada
+//   const adminExists = await Models.Admin.findOne({ email });
+//   if (adminExists) {
+//     res.status(409); // 409 Conflict
+//     throw new Error("Admin already exists");
+//   }
+
+//   // Hash password
+//   const hashedPassword = await bcrypt.hash(password, 10);
+
+//   // Buat admin baru
+//   const admin = await Models.Admin.create({
+//     name,
+//     email,
+//     password: hashedPassword,
+//   });
+
+//   if (admin) {
+//     res.status(201).json({
+//       success: true,
+//       message: "Admin registered successfully",
+//       data: {
+//         name: admin.name,
+//         email: admin.email,
+//       },
+//     });
+//   } else {
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to register admin",
+//     });
+//   }
+// });
+
+// // @desc    Login admin
+// // @route   POST /api/v1/admin/login
+// // @access  Public
+// export const loginAdmin = asyncHandler(async (req, res) => {
+//   const { email, password } = req.body;
+
+//   // Validasi input
+//   if (!email || !password) {
+//     res.status(400);
+//     throw new Error("Please provide email and password");
+//   }
+
+//   // Cari admin berdasarkan email
+//   const admin = await Models.Admin.findOne({ email });
+
+//   // Cek password cocok
+//   if (admin && (await bcrypt.compare(password, admin.password))) {
+//     res.status(200).json({
+//       success: true,
+//       message: "Login successful",
+//       data: {
+//         name: admin.name,
+//         email: admin.email,
+//         token: generateToken(admin._id),
+//       },
+//     });
+//   } else {
+//     res.status(401); // Unauthorized
+//     throw new Error("Invalid email or password");
+//   }
+// });
+
 export const registerAdmin = asyncHandler(async (req, res) => {
-  const { name, email, password } = req.body;
+  try {
+    const { name, email, password } = req.body;
 
-  // Validasi input
-  if (!name || !email || !password) {
-    res.status(400);
-    throw new Error("Please provide name, email, and password");
-  }
+    // Validasi input
+    if (!name || !email || !password) {
+      res.status(400).json({
+        success: false,
+        message: "Please provide name, email, and password",
+      });
+    }
 
-  // Cek apakah admin sudah ada
-  const adminExists = await Models.Admin.findOne({ email });
-  if (adminExists) {
-    res.status(409); // 409 Conflict
-    throw new Error("Admin already exists");
-  }
+    const existingAdmin = await Models.Admin.findOne({ email });
+    if (existingAdmin) {
+      return res.status(409).json({
+        success: false,
+        message: "Admin with this email already exists",
+      });
+    }
 
-  // Hash password
-  const hashedPassword = await bcrypt.hash(password, 10);
+    // create admin
+    const admin = await Models.Admin.create({
+      name,
+      email,
+      password,
+    });
 
-  // Buat admin baru
-  const admin = await Models.Admin.create({
-    name,
-    email,
-    password: hashedPassword,
-  });
+    const token = generateToken(admin._id);
 
-  if (admin) {
     res.status(201).json({
       success: true,
       message: "Admin registered successfully",
       data: {
         name: admin.name,
         email: admin.email,
-        token: generateToken(admin.adminId),
+        token,
       },
     });
-  } else {
-    res.status(500);
-    throw new Error("Failed to register admin");
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to register admin",
+      stack: error.stack,
+    });
   }
 });
 
-// @desc    Login admin
-// @route   POST /api/v1/admin/login
-// @access  Public
 export const loginAdmin = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
@@ -70,22 +146,33 @@ export const loginAdmin = asyncHandler(async (req, res) => {
     throw new Error("Please provide email and password");
   }
 
-  // Cari admin berdasarkan email
+  // Check if admin exists
   const admin = await Models.Admin.findOne({ email });
 
-  // Cek password cocok
-  if (admin && (await bcrypt.compare(password, admin.password))) {
-    res.status(200).json({
-      success: true,
-      message: "Login successful",
-      data: {
-        name: admin.name,
-        email: admin.email,
-        token: generateToken(admin.adminId),
-      },
+  if (!admin) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid credentials",
     });
-  } else {
-    res.status(401); // Unauthorized
-    throw new Error("Invalid email or password");
   }
+
+  // check password
+  const isPasswordValid = await admin.comparePassword(password);
+  if (!isPasswordValid) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid credentials",
+    });
+  }
+
+  const token = generateToken(admin._id);
+  res.status(200).json({
+    success: true,
+    message: "Login successful",
+    data: {
+      name: admin.name,
+      email: admin.email,
+      token,
+    },
+  });
 });

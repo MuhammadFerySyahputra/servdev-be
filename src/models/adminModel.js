@@ -1,5 +1,6 @@
 // import library yang diperlukan
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
 
 // membuat schema
@@ -7,24 +8,45 @@ const adminSchema = new mongoose.Schema(
   {
     _id: {
       type: String,
-      default: () => uuidv4(),
+      default: uuidv4,
     },
     name: {
       type: String,
       required: true,
+      maxlength: 100,
     },
     email: {
       type: String,
       required: true,
       unique: true,
+      maxlength: 100,
+      lowercase: true,
+      trim: true,
     },
     password: {
       type: String,
       required: true,
+      maxlength: 255,
     },
   },
-  { timestamps: true }
+  {
+    // Agar mongoose automatis menambahkan createdAt dan updatedAt
+    timestamps: true,
+  }
 );
 
+// Hash password sebelum save
+adminSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  this.password = await bcrypt.hash(this.password, 12);
+  next();
+});
+
+// Method untuk compare password
+adminSchema.methods.comparePassword = async function (candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
+};
+
+// export model
 const Admin = mongoose.model("Admin", adminSchema);
 export default Admin;
