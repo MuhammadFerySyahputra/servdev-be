@@ -1,6 +1,7 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { v4 as uuidv4 } from "uuid";
 
 // Buat folder uploads jika belum ada
 const uploadDir = "uploads";
@@ -15,7 +16,7 @@ const storage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const ext = path.extname(file.originalname);
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+    const uniqueName = `${uuidv4()}${ext}`;
     cb(null, uniqueName);
   },
 });
