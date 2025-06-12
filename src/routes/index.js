@@ -7,8 +7,8 @@ import { registerAdmin, loginAdmin } from "../contollers/adminController.js";
 // import { createProduct } from "../contollers/productController.js";
 
 // route untuk admin
-router.post("/admin/register", registerAdmin);
-// router.post("/admin/register", authenticateAdmin, registerAdmin);
+// router.post("/admin/register", registerAdmin);
+router.post("/admin/register", authenticateAdmin, registerAdmin);
 router.post("/admin/login", loginAdmin);
 
 // route untuk product
