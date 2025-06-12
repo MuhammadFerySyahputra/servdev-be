@@ -47,7 +47,6 @@ export const registerAdmin = asyncHandler(async (req, res) => {
       success: true,
       message: "Admin registered successfully",
       data: {
-        adminId: admin.adminId,
         name: admin.name,
         email: admin.email,
         token: generateToken(admin.adminId),
