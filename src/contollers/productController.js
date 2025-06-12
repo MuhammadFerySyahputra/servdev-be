@@ -41,16 +41,18 @@ export const createProduct = asyncHandler(async (req, res) => {
   }
 
   // const imageUrl = req.files.map((file) => file.path.replace(/\\/g, "/"));
-  const imageUrl = `${req.protocol}://${req.get("host")}/${req.files.map(
-    (file) => file.path.replace(/\\/g, "/")
-  )}`;
+  const imageUrl = req.files.map(
+    (file) =>
+      `${req.protocol}://${req.get("host")}/${file.path.replace(/\\/g, "/")}`
+  );
 
   // Buat product baru
   const product = await Models.Product.create({
     title,
-    price,
+    est_price: price,
     description,
     imageUrl,
+    is_active: false,
   });
 
   res.status(201).json({
@@ -64,7 +66,7 @@ export const createProduct = asyncHandler(async (req, res) => {
 // @route   PUT /api/v1/product/:id
 // @access  Private
 export const updateProduct = asyncHandler(async (req, res) => {
-  const { title, price, description } = req.body;
+  const { title, price, description, is_active } = req.body;
   const { id } = req.params;
 
   const product = await Models.Product.findById(id);
@@ -96,6 +98,7 @@ export const updateProduct = asyncHandler(async (req, res) => {
   product.title = title || product.title;
   product.price = price || product.price;
   product.description = description || product.description;
+  product.is_active = is_active || product.is_active;
 
   await product.save();
 
@@ -133,11 +136,57 @@ export const deleteProduct = asyncHandler(async (req, res) => {
   });
 });
 
-// // @desc    Mengambil semua product
-// // @route   GET /api/v1/product
+// // @desc    Mengambil semua product only admin
+// // @route   GET /api/v1/products
 // // @access  Public
 export const getAllProducts = asyncHandler(async (req, res) => {
   const products = await Models.Product.find().sort({ createdAt: -1 });
+
+  // const data = products.map((product) => {
+  //   return {
+  //     id: product._id,
+  //     title: product.title,
+  //     price: product.price,
+  //     description: product.description,
+  //     imageUrl: product.imageUrl[0],
+  //   };
+  // });
+
+  res.status(200).json({
+    success: true,
+    message: "Get All Products Fetched Fuccessfully",
+    count: products.length,
+    data: products,
+  });
+});
+
+// @desc    Mengambil product berdasarkan id only admin
+// @route   GET /api/v1/products/:id
+// @access  Public
+export const getProductById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const product = await Models.Product.findById(id);
+
+  if (!product) {
+    return res
+      .status(404)
+      .json({ success: false, message: "Product not found" });
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Get ProductById fetched successfully",
+    data: product,
+  });
+});
+
+// @desc    Mengambil semua product yang aktif untuk user
+// @route   GET /api/v1/product
+// @access  Public
+export const getActiveProducts = asyncHandler(async (req, res) => {
+  const products = await Models.Product.find({ is_active: true }).sort({
+    createdAt: -1,
+  });
 
   const data = products.map((product) => {
     return {
@@ -157,22 +206,4 @@ export const getAllProducts = asyncHandler(async (req, res) => {
   });
 });
 
-// // @desc    Mengambil product berdasarkan id
-// // @route   GET /api/v1/product/:id
-// // @access  Public
-export const getProductById = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const product = await Models.Product.findById(id);
-
-  if (!product) {
-    return res
-      .status(404)
-      .json({ success: false, message: "Product not found" });
-  }
-
-  res.status(200).json({
-    success: true,
-    message: "Get ProductById fetched successfully",
-    data: product,
-  });
-});
+// 

@@ -4,25 +4,50 @@ import Models from "../models/index.js";
 
 // Middleware untuk autentikasi admin
 export const authenticateAdmin = asyncHandler(async (req, res, next) => {
-  const token = req.header("Authorization")?.replace("Bearer ", "");
+  // 1. Ambil token dari header
+  const authHeader = req.header("Authorization");
 
-  if (!token) {
+  // 2. Validasi format header
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({
       success: false,
-      message: "Access denied. No Token provided.",
+      message: "Authorization header missing or invalid format",
     });
   }
 
-  const decoded = jwt.verify(token, process.env.JWT_SECRET);
-  const admin = await Models.Admin.findById(decoded.id);
+  // 3. Ekstrak token
+  const token = authHeader.split(" ")[1];
 
-  if (!admin) {
+  try {
+    // 4. Verifikasi token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // 5. Cek admin di database
+    const admin = await Models.Admin.findById(decoded.id).select("-password");
+
+    if (!admin) {
+      return res.status(401).json({
+        success: false,
+        message: "Admin not found",
+      });
+    }
+
+    // 6. Attach admin ke request object
+    req.admin = admin;
+    next();
+  } catch (error) {
+    // 7. Handle berbagai jenis error JWT
+    let message = "Invalid token";
+
+    if (error instanceof jwt.TokenExpiredError) {
+      message = "Token expired";
+    } else if (error instanceof jwt.JsonWebTokenError) {
+      message = "Invalid token";
+    }
+
     return res.status(401).json({
       success: false,
-      message: "Access denied. Unauthorized",
+      message: `Authentication failed: ${message}`,
     });
   }
-
-  req.admin = admin;
-  next();
 });

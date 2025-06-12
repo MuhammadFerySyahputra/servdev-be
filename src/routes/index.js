@@ -14,20 +14,26 @@ import {
   getProductById,
   updateProduct,
   deleteProduct,
+  getActiveProducts,
 } from "../contollers/productController.js";
 
 // route untuk admin
-// router.post("/admin/register", registerAdmin);
 router.post("/admin/register", authenticateAdmin, registerAdmin);
 router.post("/admin/login", loginAdmin);
 
 // route untuk product (only admin can access)
 router.post("/product", authenticateAdmin, uploadProductImages, createProduct);
-router.put("/product", authenticateAdmin, uploadProductImages, updateProduct);
+router.put(
+  "/product/:id",
+  authenticateAdmin,
+  uploadProductImages,
+  updateProduct
+);
 router.delete("/product/:id", authenticateAdmin, deleteProduct);
+router.get("/products", authenticateAdmin, getAllProducts);
 
 // route untuk product (public)
-router.get("/product", getAllProducts);
+router.get("/product", getActiveProducts);
 router.get("/product/:id", getProductById);
 
 export default router;

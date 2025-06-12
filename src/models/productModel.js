@@ -7,23 +7,27 @@ const productSchema = new mongoose.Schema(
   {
     _id: {
       type: String,
-      default: () => uuidv4(),
+      default: uuidv4,
     },
     title: {
       type: String,
-      required: true,
-    },
-    price: {
-      type: Number,
       required: true,
     },
     description: {
       type: String,
       required: true,
     },
+    est_price: {
+      type: Number,
+      required: true,
+    },
     imageUrl: {
       type: [String],
       required: true,
+    },
+    is_active: {
+      type: Boolean,
+      default: true,
     },
   },
   { timestamps: true }

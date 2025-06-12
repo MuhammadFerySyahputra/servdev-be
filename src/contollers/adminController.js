@@ -9,7 +9,7 @@ import Models from "../models/index.js";
 // Fungsi untuk generate JWT token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE || "30d",
+    expiresIn: "30d",
   });
 };
 
