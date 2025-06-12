@@ -1,12 +1,13 @@
+// import library yang diperlukan
 import mongoose from "mongoose";
 import { v4 as uuidv4 } from "uuid";
 
+// membuat schema
 const adminSchema = new mongoose.Schema(
   {
-    adminId: {
+    _id: {
       type: String,
       default: () => uuidv4(),
-      unique: true,
     },
     name: {
       type: String,
@@ -20,14 +21,6 @@ const adminSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
-    },
-    token: {
-      type: String,
-      default: null,
-    },
-    refreshToken: {
-      type: String,
-      default: null,
     },
   },
   { timestamps: true }
