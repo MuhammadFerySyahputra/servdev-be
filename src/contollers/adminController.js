@@ -14,8 +14,8 @@ const generateToken = (adminId) => {
 };
 
 // @desc    Register new admin
-// @route   POST /api/admin/register
-// @access  Public
+// @route   POST /api/v1/admin/register
+// @access  Private
 export const registerAdmin = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
 
@@ -59,7 +59,7 @@ export const registerAdmin = asyncHandler(async (req, res) => {
 });
 
 // @desc    Login admin
-// @route   POST /api/admin/login
+// @route   POST /api/v1/admin/login
 // @access  Public
 export const loginAdmin = asyncHandler(async (req, res) => {
   const { email, password } = req.body;

@@ -1,6 +1,7 @@
-// const mongoose = require("mongoose");
+// import library yang di butuhkan
 import mongoose from "mongoose";
 
+// fungsi untuk koneksi ke database
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
