@@ -7,7 +7,7 @@ const adminSchema = new mongoose.Schema(
   {
     _id: {
       type: String,
-      default: () => uuidv4(),
+      default: uuidv4,
     },
     name: {
       type: String,
@@ -17,14 +17,20 @@ const adminSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
+      lowercase: true,
+      trim: true,
     },
     password: {
       type: String,
       required: true,
     },
   },
-  { timestamps: true }
+  {
+    // Agar mongoose automatis menambahkan createdAt dan updatedAt
+    timestamps: true,
+  }
 );
 
+// export model
 const Admin = mongoose.model("Admin", adminSchema);
 export default Admin;

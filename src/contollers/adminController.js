@@ -7,8 +7,8 @@ import asyncHandler from "express-async-handler";
 import Models from "../models/index.js";
 
 // Fungsi untuk generate JWT token
-const generateToken = (adminId) => {
-  return jwt.sign({ adminId }, process.env.JWT_SECRET, {
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: "30d",
   });
 };
@@ -21,15 +21,19 @@ export const registerAdmin = asyncHandler(async (req, res) => {
 
   // Validasi input
   if (!name || !email || !password) {
-    res.status(400);
-    throw new Error("Please provide name, email, and password");
+    res.status(400).json({
+      success: false,
+      message: "Please provide name, email, and password",
+    });
   }
 
   // Cek apakah admin sudah ada
   const adminExists = await Models.Admin.findOne({ email });
   if (adminExists) {
-    res.status(409); // 409 Conflict
-    throw new Error("Admin already exists");
+    res.status(409).json({
+      success: false,
+      message: "Admin with this email already exists",
+    });
   }
 
   // Hash password
@@ -42,6 +46,9 @@ export const registerAdmin = asyncHandler(async (req, res) => {
     password: hashedPassword,
   });
 
+  // generata token
+  const token = generateToken(admin._id);
+
   if (admin) {
     res.status(201).json({
       success: true,
@@ -49,12 +56,14 @@ export const registerAdmin = asyncHandler(async (req, res) => {
       data: {
         name: admin.name,
         email: admin.email,
-        token: generateToken(admin.adminId),
+        token: token,
       },
     });
   } else {
-    res.status(500);
-    throw new Error("Failed to register admin");
+    res.status(500).json({
+      success: false,
+      message: "Failed to register admin",
+    });
   }
 });
 
@@ -81,7 +90,7 @@ export const loginAdmin = asyncHandler(async (req, res) => {
       data: {
         name: admin.name,
         email: admin.email,
-        token: generateToken(admin.adminId),
+        token: generateToken(admin._id),
       },
     });
   } else {

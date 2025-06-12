@@ -17,7 +17,7 @@ const app = express();
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000, // akan reset setiap 15 minutes
-    max: 100, // untuk memberikan maximal limit 100 requests per 15 minutes  
+    max: 100, // untuk memberikan maximal limit 100 requests per 15 minutes
   })
 );
 
@@ -38,6 +38,25 @@ app.use(express.urlencoded({ extended: true }));
 
 // all Routes
 app.use("/api/v1", routes);
+app.use("/uploads", express.static("uploads"));
+
+// 404 Handler
+app.use((req, res, next) => {
+  res.status(404).json({
+    success: false,
+    message: "Page Not Found",
+  });
+});
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+  const statusCode = err.statusCode || 500;
+  res.status(statusCode).json({
+    success: false,
+    message: err.message || "Internal Server Error",
+    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+  });
+});
 
 // connect ke database
 connectDB();
