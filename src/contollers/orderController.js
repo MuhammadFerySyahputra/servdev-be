@@ -208,6 +208,47 @@ export const getOrderById = asyncHandler(async (req, res) => {
 // @route GET /api/v1/orders/user/:email
 // @headers  Content-Type: application/json,
 // @access  Public
+// export const getOrdersByUserEmail = asyncHandler(async (req, res) => {
+//   const userEmail = req.params.email;
+
+//   // Cek apakah ada order untuk email tersebut
+//   const orders = await Models.Order.find({ emailUser: userEmail }).sort({
+//     createdAt: -1,
+//   });
+
+//   if (!orders || orders.length === 0) {
+//     return res.status(404).json({
+//       success: false,
+//       message: "No orders found for this user",
+//     });
+//   }
+
+//   // Ambil detail produk terkait untuk setiap order
+//   const productIds = orders.map((order) => order.productId);
+//   const products = await Models.Product.find({
+//     _id: { $in: productIds },
+//   });
+
+//   // Buat map untuk akses cepat produk berdasarkan ID
+//   const productMap = {};
+//   products.forEach((product) => {
+//     productMap[product._id] = product;
+//   });
+
+//   // Gabungkan data order dengan detail produk
+//   const ordersWithProducts = orders.map((order) => ({
+//     ...order.toObject(),
+//     productDetails: productMap[order.productId] || null,
+//   }));
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Orders for user fetched successfully",
+//     count: ordersWithProducts.length,
+//     data: ordersWithProducts,
+//   });
+// });
+
 export const getOrdersByUserEmail = asyncHandler(async (req, res) => {
   const userEmail = req.params.email;
 
@@ -223,8 +264,28 @@ export const getOrdersByUserEmail = asyncHandler(async (req, res) => {
     });
   }
 
+  // Ambil detail produk terkait untuk setiap order
+  const productIds = orders.map((order) => order.productId);
+  const products = await Models.Product.find({
+    _id: { $in: productIds },
+  });
+
+  // Buat map untuk akses cepat produk berdasarkan ID
+  const productMap = {};
+  products.forEach((product) => {
+    productMap[product._id] = product;
+  });
+
+  // Gabungkan data order dengan detail produk
+  const ordersWithProducts = orders.map((order) => ({
+    ...order.toObject(),
+    productDetails: productMap[order.productId] || null,
+  }));
+
   res.status(200).json({
     success: true,
-    data: orders,
+    message: "Orders for user fetched successfully",
+    count: ordersWithProducts.length,
+    data: ordersWithProducts,
   });
 });
