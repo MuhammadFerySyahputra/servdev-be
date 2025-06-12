@@ -90,7 +90,7 @@ export const loginAdmin = asyncHandler(async (req, res) => {
       data: {
         name: admin.name,
         email: admin.email,
-        token: generateToken(admin.adminId),
+        token: generateToken(admin._id),
       },
     });
   } else {

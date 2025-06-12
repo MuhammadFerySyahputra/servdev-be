@@ -31,6 +31,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // all Routes
 app.use("/api/v1", routes);
+app.use("/uploads", express.static("uploads"));
 
 // 404 Handler
 app.use((req, res, next) => {

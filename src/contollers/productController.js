@@ -8,19 +8,30 @@ import Models from "../models/index.js";
 // @route   POST /api/v1/product
 // @access  Private
 export const createProduct = asyncHandler(async (req, res) => {
-  const { title, price, description, imageUrl } = req.body;
+  const { title, price, description } = req.body;
 
   // Validasi input
-  if (!title || !price || !description || !imageUrl) {
-    res.status(400);
-    throw new Error("Please provide title, price, description, and imageUrl");
+  if (!title || !price || !description) {
+    res.status(400).json({
+      success: false,
+      message: "Please provide title, price, and description",
+    });
   }
 
-  // Validasi imageUrl
-  if (!Array.isArray(imageUrl)) {
-    res.status(400);
-    throw new Error("imageUrl must be an array");
+  // Cek apakah product sudah ada
+  const productExists = await Models.Product.findOne({ title });
+  if (productExists) {
+    res.status(409).json({
+      success: false,
+      message: "Product with this title already exists",
+    });
   }
+
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ message: "At least 1 image is required" });
+  }
+
+  const imageUrl = req.files.map((file) => file.path.replace(/\\/g, "/"));
 
   // Buat product baru
   const product = await Models.Product.create({
