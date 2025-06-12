@@ -1,16 +1,11 @@
 import express from "express";
 const router = express.Router();
 
-import { registerAdmin } from "../contollers/adminController.js";
-import token from "../contollers/tokenControllers.js";
-
-router.post("/token", token);
+// import file controller
+import { registerAdmin, loginAdmin } from "../contollers/adminController.js";
 
 // route untuk admin
-router.post("/register", registerAdmin);
-// router.post("/login", login);
-// router.post("/forgot-password", forgotPassword);
-// router.post("/reset-password", resetPassword);
-// router.post("/token", token);
+router.post("/admin/register", registerAdmin);
+router.post("/admin/login", loginAdmin);
 
 export default router;

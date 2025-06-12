@@ -21,14 +21,6 @@ const adminSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    token: {
-      type: String,
-      default: null,
-    },
-    refreshToken: {
-      type: String,
-      default: null,
-    },
   },
   { timestamps: true }
 );
