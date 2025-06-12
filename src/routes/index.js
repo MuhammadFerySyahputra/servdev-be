@@ -16,6 +16,14 @@ import {
   deleteProduct,
   getActiveProducts,
 } from "../contollers/productController.js";
+import {
+  createOrder,
+  updateStatusOrder,
+  deleteOrder,
+  getAllOrders,
+  getOrderById,
+  getOrdersByUserEmail,
+} from "../contollers/orderController.js";
 
 // route untuk admin
 router.post("/admin/register", authenticateAdmin, registerAdmin);
@@ -35,5 +43,16 @@ router.get("/products", authenticateAdmin, getAllProducts);
 // route untuk product (public)
 router.get("/product", getActiveProducts);
 router.get("/product/:id", getProductById);
+
+
+// route untuk order (only admin can access)
+router.get("/orders", authenticateAdmin, getAllOrders);
+router.put("/orders/:id", authenticateAdmin, updateStatusOrder);
+router.delete("/orders/:id", authenticateAdmin, deleteOrder);
+
+// route untuk order (public)
+router.post("/orders", createOrder);
+router.get("/orders/:id", getOrderById);
+router.get("/orders/user/:email", getOrdersByUserEmail);
 
 export default router;

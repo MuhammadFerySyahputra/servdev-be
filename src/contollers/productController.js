@@ -109,9 +109,9 @@ export const updateProduct = asyncHandler(async (req, res) => {
   });
 });
 
-// // @desc    Delete product
-// // @route   DELETE /api/v1/product/:id
-// // @access  Private
+// @desc    Delete product
+// @route   DELETE /api/v1/product/:id
+// @access  Private
 export const deleteProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const product = await Models.Product.findById(id);
@@ -136,9 +136,9 @@ export const deleteProduct = asyncHandler(async (req, res) => {
   });
 });
 
-// // @desc    Mengambil semua product only admin
-// // @route   GET /api/v1/products
-// // @access  Public
+// @desc    Mengambil semua product only admin
+// @route   GET /api/v1/products
+// @access  Public
 export const getAllProducts = asyncHandler(async (req, res) => {
   const products = await Models.Product.find().sort({ createdAt: -1 });
 
@@ -192,7 +192,7 @@ export const getActiveProducts = asyncHandler(async (req, res) => {
     return {
       id: product._id,
       title: product.title,
-      price: product.price,
+      price: product.est_price,
       description: product.description,
       imageUrl: product.imageUrl[0],
     };
@@ -206,4 +206,3 @@ export const getActiveProducts = asyncHandler(async (req, res) => {
   });
 });
 
-// 
