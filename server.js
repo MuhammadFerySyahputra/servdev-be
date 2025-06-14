@@ -1,10 +1,15 @@
 // import library yang diperlukan
-import { configDotenv } from "dotenv";
+import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-configDotenv();
+dotenv.config();
+
+console.log("Environment loaded:", {
+  NODE_ENV: process.env.NODE_ENV,
+  R2_CONFIGURED: process.env.R2_ACCOUNT_ID ? "Yes" : "No",
+});
 
 // import file
 import connectDB from "./src/config/db.js";
