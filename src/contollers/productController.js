@@ -1,9 +1,10 @@
-// Import library yang diperlukan
+// controllers/productController.js
 import asyncHandler from "express-async-handler";
-import fs from "fs";
-
-// Import model
 import Models from "../models/index.js";
+import {
+  uploadMultipleToR2,
+  deleteMultipleFromR2,
+} from "../config/r2Storage.js";
 
 // @desc    Create new product
 // @route   POST /api/v1/product
@@ -15,7 +16,7 @@ export const createProduct = asyncHandler(async (req, res) => {
 
   // Validasi input
   if (!title || !price || !description) {
-    res.status(400).json({
+    return res.status(400).json({
       success: false,
       message: "Please provide title, price, and description",
     });
@@ -24,89 +25,129 @@ export const createProduct = asyncHandler(async (req, res) => {
   // Cek apakah product sudah ada
   const productExists = await Models.Product.findOne({ title });
   if (productExists) {
-    res.status(409).json({
+    return res.status(409).json({
       success: false,
       message: "Product with this title already exists",
     });
   }
 
+  // Validasi file upload
   if (!req.files || req.files.length === 0) {
-    return res.status(400).json({ message: "At least 1 image is required" });
+    return res.status(400).json({
+      success: false,
+      message: "At least 1 image is required",
+    });
   }
 
   if (req.files.length > 10) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Maximum 10 images allowed" });
+    return res.status(400).json({
+      success: false,
+      message: "Maximum 10 images allowed",
+    });
   }
 
-  // const imageUrl = req.files.map((file) => file.path.replace(/\\/g, "/"));
-  const imageUrl = req.files.map(
-    (file) =>
-      `${req.protocol}://${req.get("host")}/${file.path.replace(/\\/g, "/")}`
-  );
+  try {
+    // Upload images ke R2
+    const imageUrls = await uploadMultipleToR2(req.files, "products");
 
-  // Buat product baru
-  const product = await Models.Product.create({
-    title,
-    est_price: price,
-    description,
-    imageUrl,
-    is_active: false,
-  });
+    // Buat product baru
+    const product = await Models.Product.create({
+      title,
+      est_price: price,
+      description,
+      imageUrl: imageUrls,
+      is_active: false,
+    });
 
-  res.status(201).json({
-    success: true,
-    message: "Product created successfully",
-    data: product,
-  });
+    res.status(201).json({
+      success: true,
+      message: "Product created successfully",
+      data: product,
+    });
+  } catch (error) {
+    console.error("Error creating product:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create product",
+      error: error.message,
+    });
+  }
 });
 
-// desc    Update product
+// @desc    Update product
 // @route   PUT /api/v1/product/:id
 // @access  Private
 export const updateProduct = asyncHandler(async (req, res) => {
   const { title, price, description, is_active } = req.body;
   const { id } = req.params;
 
-  const product = await Models.Product.findById(id);
-  if (!product) {
-    return res
-      .status(404)
-      .json({ success: false, message: "Product not found" });
-  }
-
-  if (req.files && req.files.length > 0) {
-    if (req.files.length > 10) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Maximum 10 images allowed" });
+  try {
+    const product = await Models.Product.findById(id);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
     }
 
-    // Optional: hapus gambar lama dari storage
-    product.imageUrl.forEach((url) => {
-      const localPath = url.split(`${req.get("host")}/`)[1];
-      if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+    // Jika ada file baru untuk diupload
+    if (req.files && req.files.length > 0) {
+      if (req.files.length > 10) {
+        return res.status(400).json({
+          success: false,
+          message: "Maximum 10 images allowed",
+        });
+      }
+
+      // Simpan URL gambar lama untuk dihapus nanti
+      const oldImageUrls = [...product.imageUrl];
+
+      try {
+        // Upload gambar baru ke R2
+        const newImageUrls = await uploadMultipleToR2(req.files, "products");
+
+        // Update product dengan gambar baru
+        product.imageUrl = newImageUrls;
+
+        // Hapus gambar lama dari R2 setelah upload berhasil
+        if (oldImageUrls.length > 0) {
+          await deleteMultipleFromR2(oldImageUrls);
+        }
+      } catch (uploadError) {
+        console.error("Error uploading new images:", uploadError);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to upload new images",
+          error: uploadError.message,
+        });
+      }
+    }
+
+    // Update field lainnya
+    product.title = title || product.title;
+    product.est_price = price || product.est_price;
+    product.description = description || product.description;
+
+    // Handle boolean conversion untuk is_active
+    if (is_active !== undefined) {
+      product.is_active = is_active === "true" || is_active === true;
+    }
+
+    await product.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Product updated successfully",
+      data: product,
     });
-
-    product.imageUrl = req.files.map(
-      (file) =>
-        `${req.protocol}://${req.get("host")}/${file.path.replace(/\\/g, "/")}`
-    );
+  } catch (error) {
+    console.error("Error updating product:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update product",
+      error: error.message,
+    });
   }
-
-  product.title = title || product.title;
-  product.price = price || product.price;
-  product.description = description || product.description;
-  product.is_active = is_active || product.is_active;
-
-  await product.save();
-
-  res.status(200).json({
-    success: true,
-    message: "Product updated successfully",
-    data: product,
-  });
 });
 
 // @desc    Delete product
@@ -114,50 +155,60 @@ export const updateProduct = asyncHandler(async (req, res) => {
 // @access  Private
 export const deleteProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const product = await Models.Product.findById(id);
 
-  if (!product) {
-    return res
-      .status(404)
-      .json({ success: false, message: "Product not found" });
+  try {
+    const product = await Models.Product.findById(id);
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    // Hapus gambar dari R2 storage
+    if (product.imageUrl && product.imageUrl.length > 0) {
+      await deleteMultipleFromR2(product.imageUrl);
+    }
+
+    // Hapus product dari database
+    await product.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: "Product deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting product:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete product",
+      error: error.message,
+    });
   }
-
-  // Hapus gambar dari penyimpanan lokal
-  product.imageUrl.forEach((url) => {
-    const localPath = url.split(`${req.get("host")}/`)[1];
-    if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
-  });
-
-  await product.deleteOne();
-
-  res.status(200).json({
-    success: true,
-    message: "Product deleted successfully",
-  });
 });
 
 // @desc    Mengambil semua product only admin
 // @route   GET /api/v1/products
 // @access  Public
 export const getAllProducts = asyncHandler(async (req, res) => {
-  const products = await Models.Product.find().sort({ createdAt: -1 });
+  try {
+    const products = await Models.Product.find().sort({ createdAt: -1 });
 
-  // const data = products.map((product) => {
-  //   return {
-  //     id: product._id,
-  //     title: product.title,
-  //     price: product.price,
-  //     description: product.description,
-  //     imageUrl: product.imageUrl[0],
-  //   };
-  // });
-
-  res.status(200).json({
-    success: true,
-    message: "Get All Products Fetched Fuccessfully",
-    count: products.length,
-    data: products,
-  });
+    res.status(200).json({
+      success: true,
+      message: "Get All Products Fetched Successfully",
+      count: products.length,
+      data: products,
+    });
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch products",
+      error: error.message,
+    });
+  }
 });
 
 // @desc    Mengambil product berdasarkan id only admin
@@ -165,44 +216,63 @@ export const getAllProducts = asyncHandler(async (req, res) => {
 // @access  Public
 export const getProductById = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const product = await Models.Product.findById(id);
 
-  if (!product) {
-    return res
-      .status(404)
-      .json({ success: false, message: "Product not found" });
+  try {
+    const product = await Models.Product.findById(id);
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Get ProductById fetched successfully",
+      data: product,
+    });
+  } catch (error) {
+    console.error("Error fetching product:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch product",
+      error: error.message,
+    });
   }
-
-  res.status(200).json({
-    success: true,
-    message: "Get ProductById fetched successfully",
-    data: product,
-  });
 });
 
 // @desc    Mengambil semua product yang aktif untuk user
 // @route   GET /api/v1/product
 // @access  Public
 export const getActiveProducts = asyncHandler(async (req, res) => {
-  const products = await Models.Product.find({ is_active: true }).sort({
-    createdAt: -1,
-  });
+  try {
+    const products = await Models.Product.find({ is_active: true }).sort({
+      createdAt: -1,
+    });
 
-  const data = products.map((product) => {
-    return {
-      id: product._id,
-      title: product.title,
-      price: product.est_price,
-      description: product.description,
-      imageUrl: product.imageUrl[0],
-    };
-  });
+    const data = products.map((product) => {
+      return {
+        id: product._id,
+        title: product.title,
+        price: product.est_price,
+        description: product.description,
+        imageUrl: product.imageUrl[0], // Ambil gambar pertama
+      };
+    });
 
-  res.status(200).json({
-    success: true,
-    message: "Get All Products Fetched Fuccessfully",
-    count: products.length,
-    data: data,
-  });
+    res.status(200).json({
+      success: true,
+      message: "Get All Active Products Fetched Successfully",
+      count: products.length,
+      data: data,
+    });
+  } catch (error) {
+    console.error("Error fetching active products:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch active products",
+      error: error.message,
+    });
+  }
 });
-
